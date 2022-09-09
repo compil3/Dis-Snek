@@ -509,12 +509,11 @@ class BaseChannel(DiscordObject):
         Returns:
             The new channel object.
         """
-        channel_type = data.get("type", None)
-        channel_class = TYPE_CHANNEL_MAPPING.get(channel_type, None)
-        if not channel_class:
+        channel_type = data.get("type")
+        if channel_class := TYPE_CHANNEL_MAPPING.get(channel_type, None):
+            return channel_class.from_dict(data, client)
+        else:
             raise TypeError(f"Unsupported channel type for {data} ({channel_type}), please consult the docs.")
-
-        return channel_class.from_dict(data, client)
 
     @property
     def mention(self) -> str:
@@ -782,10 +781,10 @@ class ThreadChannel(GuildChannel, MessageableMixin, WebhookMixin):
 
     async def get_members(self) -> List["ThreadMember"]:
         members_data = await self._client.http.list_thread_members(self.id)
-        members = []
-        for member_data in members_data:
-            members.append(ThreadMember.from_dict(member_data, self._client))
-        return members
+        return [
+            ThreadMember.from_dict(member_data, self._client)
+            for member_data in members_data
+        ]
 
     async def add_member(self, member: Union["Member", "Snowflake_Type"]) -> None:
         await self._client.http.add_thread_member(self.id, to_snowflake(member))
@@ -921,10 +920,8 @@ class GuildStageVoice(GuildVoice):
             reason: The reason for closing the stage
         """
 
-        if not self.stage_instance:
-            # we dont know of an active stage instance, so lets check for one
-            if not await self.get_stage_instance():
-                raise ValueError("No stage instance found")
+        if not self.stage_instance and not await self.get_stage_instance():
+            raise ValueError("No stage instance found")
 
         await self.stage_instance.delete(reason=reason)
 

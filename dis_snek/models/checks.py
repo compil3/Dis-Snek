@@ -14,9 +14,7 @@ def has_role(role: Union[Snowflake_Type, Role]):
     """
 
     async def check(ctx: Context) -> bool:
-        if ctx.guild is None:
-            return False
-        return await ctx.author.has_role(role)
+        return False if ctx.guild is None else await ctx.author.has_role(role)
 
     return check
 
@@ -32,9 +30,7 @@ def has_any_role(*roles: Union[Snowflake_Type, Role]):
         if ctx.guild is None:
             return False
 
-        if any(ctx.author.has_role(to_snowflake(r)) for r in roles):
-            return True
-        return False
+        return any((ctx.author.has_role(to_snowflake(r)) for r in roles))
 
 
 def has_id(user_id):

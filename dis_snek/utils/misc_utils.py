@@ -37,10 +37,7 @@ def find(predicate: Callable, sequence: Iterable) -> Optional[Any]:
     Returns:
         A match if found, otherwise None
     """
-    for el in sequence:
-        if predicate(el):
-            return el
-    return None
+    return next((el for el in sequence if predicate(el)), None)
 
 
 def wrap_partial(obj, cls):

@@ -61,10 +61,9 @@ class Application(DiscordObject):
         if data.get("team"):
             data["team"] = Team.from_dict(data["team"], client)
             data["owner_id"] = data["team"].owner_user_id
-        else:
-            if "owner" in data:
-                owner = client.cache.place_user_data(data.pop("owner"))
-                data["owner_id"] = owner.id
+        elif "owner" in data:
+            owner = client.cache.place_user_data(data.pop("owner"))
+            data["owner_id"] = owner.id
 
         if data["icon"]:
             data["icon"] = Asset.from_path_hash(client, f"app-icons/{data['id']}/{{}}.png", data["icon"])

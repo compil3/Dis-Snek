@@ -108,7 +108,9 @@ class BeeGees(threading.Thread):
         self._last_ack = time.perf_counter()
         self.latency = ack_time - self._last_send
         if self._last_send != 0 and self.latency > 10:
-            log.warning(f"Can't keep up! shard ID {0} websocket is {self.latency:.1f}s behind.")
+            log.warning(
+                f"Can't keep up! shard ID 0 websocket is {self.latency:.1f}s behind."
+            )
 
 
 class WebsocketClient:
@@ -205,14 +207,12 @@ class WebsocketClient:
         cls.presence = presence
         cls.ws = await cls.http.websocket_connect(cls._gateway)
         dispatch(events.Connect())
-        if resume:
-            return cls(session_id, sequence)
-        return cls()
+        return cls(session_id, sequence) if resume else cls()
 
     @property
     def latency(self) -> float:
         """Get the latency of the connection."""
-        return float("inf") if not self._keep_alive else self._keep_alive.latency
+        return self._keep_alive.latency if self._keep_alive else float("inf")
 
     async def _receive(self) -> None:
         resp = await self.ws.receive()
@@ -370,15 +370,16 @@ class WebsocketClient:
     async def send_heartbeat(self, data: dict) -> None:
         """Send a heartbeat to the gateway."""
         await self.send_json(data)
-        log.debug(f"Keeping Shard ID {0} alive with sequence {self.sequence}")
+        log.debug(f"Keeping Shard ID 0 alive with sequence {self.sequence}")
 
     async def change_presence(self, activity=None, status: Status = Status.ONLINE, since=None):
         payload = dict_filter_none(
             {
-                "since": int(since if since else time.time() * 1000),
+                "since": int(since or time.time() * 1000),
                 "activities": [activity] if activity else [],
                 "status": status,
                 "afk": False,
             }
         )
+
         await self.send_json({"op": OPCODE.PRESENCE, "d": payload})

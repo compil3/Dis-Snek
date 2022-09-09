@@ -115,7 +115,7 @@ class HTTPClient(
         # Assemble headers
         headers: Dict[str, str] = {"User-Agent": self.user_agent}
         if self.token not in (None, MISSING):
-            headers["Authorization"] = "Bot " + self.token
+            headers["Authorization"] = f"Bot {self.token}"
 
         if isinstance(data, list):
             headers["Content-Type"] = "application/json"
@@ -173,13 +173,13 @@ class HTTPClient(
                         continue
 
                     if not 300 > response.status >= 200:
-                        if not r_limit_data["remaining"] == 0:
+                        if r_limit_data["remaining"] != 0:
                             lock.release()
                         await self._raise_exception(response, route, result)
 
                     # Success!
                     log.debug(f"{route.method}::{route.url}: Received {response.status}, releasing")
-                    if not r_limit_data["remaining"] == 0:
+                    if r_limit_data["remaining"] != 0:
                         lock.release()
                     return result
             except OSError as e:

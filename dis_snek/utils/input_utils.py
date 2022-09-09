@@ -36,8 +36,14 @@ _quotes = {
     "〈": "〉",
 }
 _pending_regex = r"(1.*2|[^\s]+)"
-_pending_regex = _pending_regex.replace("1", f"[{''.join([k for k in _quotes.keys()])}]")
-_pending_regex = _pending_regex.replace("2", f"[{''.join([k for k in _quotes.values()])}]")
+_pending_regex = _pending_regex.replace(
+    "1", f"[{''.join(list(_quotes.keys()))}]"
+)
+
+_pending_regex = _pending_regex.replace(
+    "2", f"[{''.join(list(_quotes.values()))}]"
+)
+
 
 arg_parse = re.compile(_pending_regex)
 white_space = re.compile(r"\s+")
@@ -95,16 +101,14 @@ def get_first_word(text: str):
          The requested word
     """
     found = initial_word.findall(text)
-    if len(found) == 0:
-        return None
-    return found[0]
+    return None if len(found) == 0 else found[0]
 
 
 def _get_mime_type_for_image(data: bytes):
     # taken from d.py, alternative is to use libmagic, which would require users to install libs
     if data.startswith(b"\x89\x50\x4E\x47\x0D\x0A\x1A\x0A"):
         return "image/png"
-    elif data[0:3] == b"\xff\xd8\xff" or data[6:10] in (b"JFIF", b"Exif"):
+    elif data[:3] == b"\xff\xd8\xff" or data[6:10] in (b"JFIF", b"Exif"):
         return "image/jpeg"
     elif data.startswith((b"\x47\x49\x46\x38\x37\x61", b"\x47\x49\x46\x38\x39\x61")):
         return "image/gif"

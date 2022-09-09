@@ -65,14 +65,18 @@ class ThreadList(ClientObject):
 
     @classmethod
     def _process_dict(cls, data: Dict[str, Any], client: "Snake") -> Dict[str, Any]:
-        threads = []
-        for thread_data in data["threads"]:
-            threads.append(client.cache.place_channel_data(thread_data))
+        threads = [
+            client.cache.place_channel_data(thread_data)
+            for thread_data in data["threads"]
+        ]
+
         data["threads"] = threads
 
-        members = []
-        for member_data in data["members"]:
-            members.append(ThreadMember.from_dict(member_data, client))
+        members = [
+            ThreadMember.from_dict(member_data, client)
+            for member_data in data["members"]
+        ]
+
         data["members"] = threads
 
         return data

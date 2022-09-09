@@ -244,48 +244,50 @@ class Message(DiscordObject):
         data["mention_ids"] = mention_ids
 
         if "mention_channels" in data:
-            mention_channels = []
-            for channel_data in data["mention_channels"]:
-                mention_channels.append(ChannelMention.from_dict(channel_data, client))
+            mention_channels = [
+                ChannelMention.from_dict(channel_data, client)
+                for channel_data in data["mention_channels"]
+            ]
+
             data["mention_channels"] = mention_channels
 
-        attachments = []
-        for attachment_data in data["attachments"]:
-            attachments.append(Attachment.from_dict(attachment_data, client))
+        attachments = [
+            Attachment.from_dict(attachment_data, client)
+            for attachment_data in data["attachments"]
+        ]
+
         data["attachments"] = attachments
 
-        embeds = []
-        for embed_data in data["embeds"]:
-            embeds.append(Embed.from_dict(embed_data))
+        embeds = [Embed.from_dict(embed_data) for embed_data in data["embeds"]]
         data["embeds"] = embeds
 
         if "reactions" in data:
-            reactions = []
-            for reaction_data in data["reactions"]:
-                reactions.append(
-                    Reaction.from_dict(
-                        reaction_data | {"message_id": data["id"], "channel_id": data["channel_id"]}, client
-                    )
+            reactions = [
+                Reaction.from_dict(
+                    reaction_data
+                    | {"message_id": data["id"], "channel_id": data["channel_id"]},
+                    client,
                 )
+                for reaction_data in data["reactions"]
+            ]
+
             data["reactions"] = reactions
 
-        # TODO: Convert to application object
-
-        ref_message_data = data.pop("referenced_message", None)
-        if ref_message_data:
+        if ref_message_data := data.pop("referenced_message", None):
             data["referenced_message_id"] = client.cache.place_message_data(ref_message_data)
 
         if "interaction" in data:
             data["interaction"] = MessageInteraction.from_dict(data["interaction"], client)
 
-        thread_data = data.pop("thread", None)
-        if thread_data:
+        if thread_data := data.pop("thread", None):
             data["thread_channel_id"] = client.cache.place_channel_data(thread_data).id
 
         if "components" in data:
-            components = []
-            for component_data in data["components"]:
-                components.append(BaseComponent.from_dict_factory(component_data))
+            components = [
+                BaseComponent.from_dict_factory(component_data)
+                for component_data in data["components"]
+            ]
+
             data["components"] = components
 
         if "sticker_items" in data:
@@ -591,19 +593,18 @@ def process_message_payload(
         )
     )
 
-    if file:
-        # We need to use multipart/form-data for file sending here.
-        form = FormData()
-        form.add_field("payload_json", OverriddenJson.dumps(message_data))
-        if isinstance(file, File):
-            if isinstance(file.file, IOBase):
-                form.add_field("file", file.file, filename=file.file_name)
-            else:
-                form.add_field("file", open(str(file.file), "rb"), filename=file.file_name)
-        elif isinstance(file, IOBase):
-            form.add_field("file", file)
-        else:
-            form.add_field("file", open(str(file), "rb"))
-        return form
-    else:
+    if not file:
         return message_data
+    # We need to use multipart/form-data for file sending here.
+    form = FormData()
+    form.add_field("payload_json", OverriddenJson.dumps(message_data))
+    if isinstance(file, File):
+        if isinstance(file.file, IOBase):
+            form.add_field("file", file.file, filename=file.file_name)
+        else:
+            form.add_field("file", open(str(file.file), "rb"), filename=file.file_name)
+    elif isinstance(file, IOBase):
+        form.add_field("file", file)
+    else:
+        form.add_field("file", open(str(file), "rb"))
+    return form

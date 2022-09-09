@@ -132,7 +132,6 @@ class BaseCommand(DictSerializationMixin):
                     kwargs[param.name] = param.annotation(*ano_args)
                 else:
                     args.append(param.annotation(*ano_args))
-                continue
             elif param.name in context.kwargs:
                 # if parameter is in kwargs, user obviously wants it, pass it
                 if param.kind != param.POSITIONAL_ONLY:
@@ -143,25 +142,23 @@ class BaseCommand(DictSerializationMixin):
                     c_args.remove(context.kwargs[param.name])
             elif param.default is not param.empty:
                 kwargs[param.name] = param.default
-            else:
-                if not str(param).startswith("*"):
-                    if param.kind != param.KEYWORD_ONLY:
-                        try:
-                            args.append(c_args.pop(0))
-                        except IndexError:
-                            raise ValueError(
-                                f"{context.invoked_name} expects {len([p for p in parameters.values() if p.default is p.empty])+len(callback.args)}"
-                                f" arguments but received {len(context.args)} instead"
-                            ) from None
-                    else:
-                        raise ValueError(f"Unable to resolve argument: {param.name}")
+            elif not str(param).startswith("*"):
+                if param.kind == param.KEYWORD_ONLY:
+                    raise ValueError(f"Unable to resolve argument: {param.name}")
 
+                try:
+                    args.append(c_args.pop(0))
+                except IndexError:
+                    raise ValueError(
+                        f"{context.invoked_name} expects {len([p for p in parameters.values() if p.default is p.empty])+len(callback.args)}"
+                        f" arguments but received {len(context.args)} instead"
+                    ) from None
         if any(kwargs_reg.match(str(param)) for param in parameters.values()):
             # if user has `**kwargs` pass all remaining kwargs
-            kwargs = kwargs | {k: v for k, v in context.kwargs.items() if k not in kwargs}
+            kwargs |= {k: v for k, v in context.kwargs.items() if k not in kwargs}
         if any(args_reg.match(str(param)) for param in parameters.values()):
             # user has `*args` pass all remaining args
-            args = args + c_args
+            args += c_args
         return await callback(*args, **kwargs)
 
     async def _can_run(self, context):
@@ -186,13 +183,17 @@ class BaseCommand(DictSerializationMixin):
                     if not await _c(context):
                         raise CommandCheckFailure(self, _c, context)
 
-            if self.max_concurrency is not MISSING:
-                if not await self.max_concurrency.acquire(context):
-                    raise MaxConcurrencyReached(self, self.max_concurrency)
+            if (
+                self.max_concurrency is not MISSING
+                and not await self.max_concurrency.acquire(context)
+            ):
+                raise MaxConcurrencyReached(self, self.max_concurrency)
 
-            if self.cooldown is not MISSING:
-                if not await self.cooldown.acquire_token(context):
-                    raise CommandOnCooldown(self, await self.cooldown.get_cooldown(context))
+            if (
+                self.cooldown is not MISSING
+                and not await self.cooldown.acquire_token(context)
+            ):
+                raise CommandOnCooldown(self, await self.cooldown.get_cooldown(context))
 
             return True
 

@@ -34,26 +34,25 @@ class ReactionUsers(AsyncIterator):
         super().__init__(limit)
 
     async def fetch(self):
-        if self._more:
-            expected = self.get_limit
-
-            if self.after and not self.last:
-                self.last = namedtuple("temp", "id")
-                self.last.id = self.after
-
-            users = await self.reaction._client.http.get_reactions(
-                self.reaction._channel_id,
-                self.reaction._message_id,
-                self.reaction.emoji.req_format,
-                limit=expected,
-                after=self.last.id or MISSING,
-            )
-            if not users:
-                raise QueueEmpty()
-            self._more = len(users) == expected
-            return [self.reaction._client.cache.place_user_data(u) for u in users]
-        else:
+        if not self._more:
             raise QueueEmpty()
+        expected = self.get_limit
+
+        if self.after and not self.last:
+            self.last = namedtuple("temp", "id")
+            self.last.id = self.after
+
+        users = await self.reaction._client.http.get_reactions(
+            self.reaction._channel_id,
+            self.reaction._message_id,
+            self.reaction.emoji.req_format,
+            limit=expected,
+            after=self.last.id or MISSING,
+        )
+        if not users:
+            raise QueueEmpty()
+        self._more = len(users) == expected
+        return [self.reaction._client.cache.place_user_data(u) for u in users]
 
 
 @define()
