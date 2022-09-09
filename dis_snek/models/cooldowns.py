@@ -43,7 +43,12 @@ class Buckets(IntEnum):
         elif self is Buckets.CATEGORY:
             return await context.channel.parent.id if context.channel.parent else context.channel.id
         elif self is Buckets.ROLE:
-            return context.channel.id if not context.guild else await context.author.top_role.id
+            return (
+                await context.author.top_role.id
+                if context.guild
+                else context.channel.id
+            )
+
         else:
             return context.author.id
 
@@ -175,9 +180,7 @@ class CooldownSystem:
         """
         self.determine_cooldown()
 
-        if self._tokens == 0:
-            return False
-        return True
+        return self._tokens != 0
 
     def acquire_token(self) -> bool:
         """
@@ -201,9 +204,7 @@ class CooldownSystem:
         Returns:
             remaining cooldown time, will return 0 if the cooldown has not been reached
         """
-        if self._tokens != 0:
-            return 0
-        return self.interval - (time.time() - self.opened)
+        return 0 if self._tokens != 0 else self.interval - (time.time() - self.opened)
 
     def determine_cooldown(self) -> None:
         """

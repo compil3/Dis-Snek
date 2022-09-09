@@ -104,9 +104,7 @@ class Webhook(DiscordObject, SendMixin):
 
         data = await client.http.create_webhook(channel, name, avatar)
 
-        new_cls = cls.from_dict(data, client)
-
-        return new_cls
+        return cls.from_dict(data, client)
 
     @classmethod
     def _process_dict(cls, data: Dict[str, Any], client: "Snake") -> Dict[str, Any]:

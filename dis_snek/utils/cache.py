@@ -115,10 +115,7 @@ class _CacheItemsView(ItemsView):
     def __contains__(self, item):
         key, value = item
         v = self._mapping.get(key, default=attr.NOTHING, reset_expiration=False)
-        if v is attr.NOTHING:
-            return False
-        else:
-            return v is value or v == value
+        return False if v is attr.NOTHING else v is value or v == value
 
     def __iter__(self):
         for key in self._mapping:

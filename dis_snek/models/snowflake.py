@@ -28,9 +28,7 @@ def to_snowflake(snowflake: Union[Snowflake_Type, "SnowflakeObject"]) -> int:
 
 
 def to_optional_snowflake(snowflake: Optional[Union[Snowflake_Type, "SnowflakeObject"]] = MISSING) -> Optional[int]:
-    if snowflake is MISSING:
-        return MISSING
-    return to_snowflake(snowflake)
+    return MISSING if snowflake is MISSING else to_snowflake(snowflake)
 
 
 def to_snowflake_list(snowflakes: List[Union[Snowflake_Type, "SnowflakeObject"]]) -> List[int]:

@@ -63,7 +63,7 @@ class Scale:
         cls.scale_postrun = []
         cls.listeners = []
 
-        cls.description = kwargs.get("Description", None)
+        cls.description = kwargs.get("Description")
         if not cls.description:
             cls.description = inspect.cleandoc(cls.__doc__) if cls.__doc__ else None
 

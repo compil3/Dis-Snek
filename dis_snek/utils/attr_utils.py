@@ -24,9 +24,7 @@ field = partial(attr.field, **field_defaults)  # type: ignore
 
 
 def copy_converter(value):
-    if isinstance(value, (list, set)):
-        return value.copy()
-    return value
+    return value.copy() if isinstance(value, (list, set)) else value
 
 
 def docs(doc_string: str) -> Dict[str, str]:

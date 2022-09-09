@@ -348,9 +348,7 @@ class AutocompleteContext(_BaseInteractionContext):
     @classmethod
     def from_dict(cls, data: Dict, client: "Snake") -> "ComponentContext":
         """Create a context object from a dictionary"""
-        new_cls = super().from_dict(data, client)
-
-        return new_cls
+        return super().from_dict(data, client)
 
     @property
     def input_text(self) -> str:
@@ -394,14 +392,13 @@ class MessageContext(Context, SendMixin):
 
     @classmethod
     def from_message(cls, client: "Snake", message: "Message"):
-        new_cls = cls(
+        return cls(
             client=client,
             message=message,
             author=message.author,
             channel=message.channel,
             guild_id=message.guild.id,
         )
-        return new_cls
 
     @property
     def content_parameters(self):

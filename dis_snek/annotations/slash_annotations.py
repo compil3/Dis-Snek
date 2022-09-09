@@ -27,7 +27,7 @@ def slash_str_option(
         autocomplete: Use autocomplete for this option
         choices: The choices allowed by this command
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
@@ -35,7 +35,6 @@ def slash_str_option(
         choices=choices,
         type=OptionTypes.STRING,
     )
-    return option  # type: ignore
 
 
 def slash_float_option(
@@ -57,7 +56,7 @@ def slash_float_option(
         min_value:
         max_value:
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
@@ -67,7 +66,6 @@ def slash_float_option(
         min_value=min_value,
         type=OptionTypes.NUMBER,
     )
-    return option  # type: ignore
 
 
 def slash_int_option(
@@ -89,7 +87,7 @@ def slash_int_option(
         min_value:
         max_value:
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
@@ -99,7 +97,6 @@ def slash_int_option(
         min_value=min_value,
         type=OptionTypes.INTEGER,
     )
-    return option  # type: ignore
 
 
 def slash_bool_option(
@@ -113,13 +110,12 @@ def slash_bool_option(
         description: The description of your option
         required: Is this option required?
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
         type=OptionTypes.BOOLEAN,
     )
-    return option  # type: ignore
 
 
 def slash_user_option(
@@ -135,14 +131,13 @@ def slash_user_option(
         required: Is this option required?
         autocomplete: Use autocomplete for this option
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
         autocomplete=autocomplete,
         type=OptionTypes.USER,
     )
-    return option  # type: ignore
 
 
 def slash_channel_option(
@@ -162,7 +157,7 @@ def slash_channel_option(
         choices: The choices allowed by this command
         channel_types: The types of channel allowed by this option
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
@@ -171,7 +166,6 @@ def slash_channel_option(
         channel_types=channel_types,
         type=OptionTypes.CHANNEL,
     )
-    return option  # type: ignore
 
 
 def slash_role_option(
@@ -189,7 +183,7 @@ def slash_role_option(
         autocomplete: Use autocomplete for this option
         choices: The choices allowed by this command
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
@@ -197,7 +191,6 @@ def slash_role_option(
         choices=choices,
         type=OptionTypes.ROLE,
     )
-    return option  # type: ignore
 
 
 def slash_mentionable_option(
@@ -215,7 +208,7 @@ def slash_mentionable_option(
         autocomplete: Use autocomplete for this option
         choices: The choices allowed by this command
     """
-    option = SlashCommandOption(
+    return SlashCommandOption(
         name="placeholder",
         description=description,
         required=required,
@@ -223,4 +216,3 @@ def slash_mentionable_option(
         choices=choices,
         type=OptionTypes.MENTIONABLE,
     )
-    return option  # type: ignore

@@ -45,7 +45,7 @@ class Role(DiscordObject):
 
     @classmethod
     def _process_dict(cls, data: Dict[str, Any], client: "Snake") -> Dict[str, Any]:
-        data.update(data.pop("tags", {}))
+        data |= data.pop("tags", {})
         return data
 
     async def get_bot(self) -> Optional["Member"]:
@@ -85,9 +85,10 @@ class Role(DiscordObject):
             This does not account for permissions, only the role hierarchy"""
         me = await self.guild.me
 
-        if (self.default or await me.top_role.position > self.position) and not self.managed:
-            return True
-        return False
+        return bool(
+            (self.default or await me.top_role.position > self.position)
+            and not self.managed
+        )
 
     async def delete(self, reason: str = None):
         """

@@ -61,9 +61,7 @@ class DateTrigger(BaseTrigger):
         self.target = target_datetime
 
     def next_fire(self) -> Optional[datetime]:
-        if datetime.now() < self.target:
-            return self.target
-        return None
+        return self.target if datetime.now() < self.target else None
 
 
 class TimeTrigger(BaseTrigger):
@@ -101,9 +99,11 @@ class OrTrigger(BaseTrigger):
         self.triggers: List[BaseTrigger] = list(trigger)
 
     def _get_delta(self, d: BaseTrigger):
-        if not d.next_fire():
-            return float("inf")
-        return abs(d.next_fire() - self.last_call_time)
+        return (
+            abs(d.next_fire() - self.last_call_time)
+            if d.next_fire()
+            else float("inf")
+        )
 
     def __or__(self, other):
         self.triggers.append(other)

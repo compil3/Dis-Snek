@@ -38,11 +38,10 @@ def create_cache(
         dict or TTLCache based on parameters passed
     """ ""
     if ttl is None and hard_limit is None:
-        return dict()
-    else:
-        if not soft_limit:
-            soft_limit = int(hard_limit / 4) if hard_limit else 50
-        return TTLCache(hard_limit=hard_limit or float("inf"), soft_limit=soft_limit or 0, ttl=ttl or float("inf"))
+        return {}
+    if not soft_limit:
+        soft_limit = int(hard_limit / 4) if hard_limit else 50
+    return TTLCache(hard_limit=hard_limit or float("inf"), soft_limit=soft_limit or 0, ttl=ttl or float("inf"))
 
 
 @attr.define()
@@ -172,10 +171,8 @@ class GlobalCache:
         if user_id == self._client.user.id:
             # noinspection PyProtectedMember
             self._client.user._add_guilds({guild_id})
-        else:
-            guilds = self.user_guilds.get(user_id)
-            if guilds:
-                guilds.add(guild_id)
+        elif guilds := self.user_guilds.get(user_id):
+            guilds.add(guild_id)
 
     async def is_user_in_guild(
         self, user_id: "Snowflake_Type", guild_id: "Snowflake_Type", request_fallback: bool = True

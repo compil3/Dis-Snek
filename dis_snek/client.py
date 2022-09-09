@@ -280,7 +280,7 @@ class Snake(
         # so im gathering commands here
         self._gather_commands()
 
-        log.debug(f"Attempting to login")
+        log.debug("Attempting to login")
         me = await self.http.login(token.strip())
         self._user = SnakeBotUser.from_dict(me, self)
         self.cache.place_user_data(me)
@@ -321,12 +321,11 @@ class Snake(
 
                 if isinstance(ex, WebSocketClosed):
                     if ex.code == 1000:
-                        if self._ready:
-                            # the bot disconnected, attempt to reconnect to gateway
-                            params.update(resume=True, session_id=self.ws.session_id, sequence=self.ws.sequence)
-                            continue
-                        else:
+                        if not self._ready:
                             return
+                        # the bot disconnected, attempt to reconnect to gateway
+                        params.update(resume=True, session_id=self.ws.session_id, sequence=self.ws.sequence)
+                        continue
                     elif ex.code == 4011:
                         raise SnakeException("Your bot is too large, you must use shards") from None
                     elif ex.code == 4013:
@@ -456,7 +455,7 @@ class Snake(
             event: The websocket ready packet
         """
         data = event.data
-        expected_guilds = set(to_snowflake(guild["id"]) for guild in data["guilds"])
+        expected_guilds = {to_snowflake(guild["id"]) for guild in data["guilds"]}
         self._user._add_guilds(expected_guilds)
 
         while True:
@@ -563,7 +562,7 @@ class Snake(
         Returns:
             `Component` that was invoked, or `None` if timed out. Use `.context` to get the `ComponentContext`.
         """
-        if not (messages or components):
+        if not messages and not components:
             raise ValueError("You must specify messages or components (or both)")
 
         message_ids = (
@@ -583,9 +582,7 @@ class Snake(
             )
             wanted_component = not custom_ids or ctx.custom_id in custom_ids
             if wanted_message and wanted_component:
-                if check is None or check(event):
-                    return True
-                return False
+                return bool(check is None or check(event))
             return False
 
         return await self.wait_for("component", checks=_check, timeout=timeout)
@@ -642,12 +639,10 @@ class Snake(
             command: The command to add
         """
         for listener in command.listeners:
-            # I know this isn't an ideal solution, but it means we can lookup callbacks with O(1)
-            if listener not in self._component_callbacks.keys():
-                self._component_callbacks[listener] = command
-                continue
-            else:
+            if listener in self._component_callbacks.keys():
                 raise ValueError(f"Duplicate Component! Multiple component callbacks for `{listener}`")
+            self._component_callbacks[listener] = command
+            continue
 
     def _gather_commands(self):
         """Gathers commands from __main__ and self"""
@@ -693,7 +688,7 @@ class Snake(
 
     async def _cache_interactions(self, warn_missing: bool = False):
         """Get all interactions used by this bot and cache them."""
-        bot_scopes = set(g.id for g in self.cache.guild_cache.values())
+        bot_scopes = {g.id for g in self.cache.guild_cache.values()}
         bot_scopes.add(GLOBAL_SCOPE)
 
         # Match all interaction is registered with discord's data.
@@ -709,12 +704,11 @@ class Snake(
             for cmd in self.interactions[scope].values():
                 cmd_data = remote_cmds.get(cmd.name, MISSING)
                 if cmd_data is MISSING:
-                    if cmd.name not in found:
-                        if warn_missing:
-                            log.error(
-                                f'Detected yet to sync slash command "/{cmd.name}" for scope '
-                                f"{'global' if scope == GLOBAL_SCOPE else scope}"
-                            )
+                    if cmd.name not in found and warn_missing:
+                        log.error(
+                            f'Detected yet to sync slash command "/{cmd.name}" for scope '
+                            f"{'global' if scope == GLOBAL_SCOPE else scope}"
+                        )
                     continue
                 else:
                     found.add(cmd.name)
@@ -862,63 +856,62 @@ class Snake(
         # this line shuts up IDE warnings
         cls: Union[MessageContext, ComponentContext, InteractionContext, AutocompleteContext]
 
-        if interaction:
-            # todo: change to match
-            if data["type"] == InteractionTypes.MESSAGE_COMPONENT:
-                return ComponentContext.from_dict(data, self)
-            elif data["type"] == InteractionTypes.AUTOCOMPLETE:
-                cls = AutocompleteContext.from_dict(data, self)
-            else:
-                cls = InteractionContext.from_dict(data, self)
-
-            invoked_name: str = data["data"]["name"]
-            kwargs = {}
-
-            if options := data["data"].get("options"):
-                o_type = options[0]["type"]
-                if o_type in (OptionTypes.SUB_COMMAND, OptionTypes.SUB_COMMAND_GROUP):
-                    # this is a subcommand, process accordingly
-                    if o_type == OptionTypes.SUB_COMMAND:
-                        invoked_name = f"{invoked_name} {options[0]['name']}"
-                        options = options[0].get("options", [])
-                    else:
-                        invoked_name = (
-                            f"{invoked_name} {options[0]['name']} "
-                            f"{next(x for x in options[0]['options'] if x['type'] == OptionTypes.SUB_COMMAND)['name']}"
-                        )
-                        options = options[0]["options"][0].get("options", [])
-
-                for option in options:
-                    value = option.get("value")
-
-                    # todo change to match statement
-                    # this block here resolves the options using the cache
-                    if option["type"] == OptionTypes.USER:
-                        value = (
-                            self.cache.member_cache.get((to_snowflake(data.get("guild_id", 0)), to_snowflake(value)))
-                            or self.cache.user_cache.get(to_snowflake(value))
-                        ) or value
-                    elif option["type"] == OptionTypes.CHANNEL:
-                        value = self.cache.channel_cache.get(to_snowflake(value)) or value
-                    elif option["type"] == OptionTypes.ROLE:
-                        value = self.cache.role_cache.get(to_snowflake(value)) or value
-                    elif option["type"] == OptionTypes.MENTIONABLE:
-                        snow = to_snowflake(value)
-                        if user := self.cache.member_cache.get(snow) or self.cache.user_cache.get(snow):
-                            value = user
-                        elif role := self.cache.role_cache.get(snow):
-                            value = role
-                    if option.get("focused", False):
-                        cls.focussed_option = option.get("name")
-                    kwargs[option["name"].lower()] = value
-
-            cls.invoked_name = invoked_name
-            cls.kwargs = kwargs
-            cls.args = [v for v in kwargs.values()]
-
-            return cls
-        else:
+        if not interaction:
             return MessageContext.from_message(self, data)
+        # todo: change to match
+        if data["type"] == InteractionTypes.MESSAGE_COMPONENT:
+            return ComponentContext.from_dict(data, self)
+        elif data["type"] == InteractionTypes.AUTOCOMPLETE:
+            cls = AutocompleteContext.from_dict(data, self)
+        else:
+            cls = InteractionContext.from_dict(data, self)
+
+        invoked_name: str = data["data"]["name"]
+        kwargs = {}
+
+        if options := data["data"].get("options"):
+            o_type = options[0]["type"]
+            if o_type in (OptionTypes.SUB_COMMAND, OptionTypes.SUB_COMMAND_GROUP):
+                # this is a subcommand, process accordingly
+                if o_type == OptionTypes.SUB_COMMAND:
+                    invoked_name = f"{invoked_name} {options[0]['name']}"
+                    options = options[0].get("options", [])
+                else:
+                    invoked_name = (
+                        f"{invoked_name} {options[0]['name']} "
+                        f"{next(x for x in options[0]['options'] if x['type'] == OptionTypes.SUB_COMMAND)['name']}"
+                    )
+                    options = options[0]["options"][0].get("options", [])
+
+            for option in options:
+                value = option.get("value")
+
+                # todo change to match statement
+                # this block here resolves the options using the cache
+                if option["type"] == OptionTypes.USER:
+                    value = (
+                        self.cache.member_cache.get((to_snowflake(data.get("guild_id", 0)), to_snowflake(value)))
+                        or self.cache.user_cache.get(to_snowflake(value))
+                    ) or value
+                elif option["type"] == OptionTypes.CHANNEL:
+                    value = self.cache.channel_cache.get(to_snowflake(value)) or value
+                elif option["type"] == OptionTypes.ROLE:
+                    value = self.cache.role_cache.get(to_snowflake(value)) or value
+                elif option["type"] == OptionTypes.MENTIONABLE:
+                    snow = to_snowflake(value)
+                    if user := self.cache.member_cache.get(snow) or self.cache.user_cache.get(snow):
+                        value = user
+                    elif role := self.cache.role_cache.get(snow):
+                        value = role
+                if option.get("focused", False):
+                    cls.focussed_option = option.get("name")
+                kwargs[option["name"].lower()] = value
+
+        cls.invoked_name = invoked_name
+        cls.kwargs = kwargs
+        cls.args = list(kwargs.values())
+
+        return cls
 
     @listen("raw_interaction_create")
     async def _dispatch_interaction(self, event: RawGatewayEvent) -> None:
@@ -936,7 +929,6 @@ class Snake(
             InteractionTypes.AUTOCOMPLETE,
         ):
             interaction_id = interaction_data["data"]["id"]
-            name = interaction_data["data"]["name"]
             scope = self._interaction_scopes.get(str(interaction_id))
 
             if scope in self.interactions:
@@ -960,6 +952,7 @@ class Snake(
                     finally:
                         await self.on_command(ctx)
             else:
+                name = interaction_data["data"]["name"]
                 log.error(f"Unknown cmd_id received:: {interaction_id} ({name})")
 
         elif interaction_data["type"] == InteractionTypes.MESSAGE_COMPONENT:
@@ -992,8 +985,7 @@ class Snake(
             prefix = await self.get_prefix(message)
 
             if prefix == MENTION_PREFIX:
-                mention = self._mention_reg.search(message.content)
-                if mention:
+                if mention := self._mention_reg.search(message.content):
                     prefix = mention.group()
                 else:
                     return
@@ -1204,10 +1196,7 @@ class Snake(
 
     async def get_nitro_packs(self) -> List["StickerPack"]:
         packs_data = await self.http.list_nitro_sticker_packs()
-        packs = []
-        for pack_data in packs_data:
-            packs.append(StickerPack.from_dict(pack_data, self))
-        return packs
+        return [StickerPack.from_dict(pack_data, self) for pack_data in packs_data]
 
     async def change_presence(
         self, status: Optional[Union[str, Status]] = Status.ONLINE, activity: Optional[Union[Activity, str]] = None
@@ -1233,7 +1222,7 @@ class Snake(
             elif activity.type not in [ActivityType.GAME, ActivityType.STREAMING, ActivityType.LISTENING]:
                 log.warning(f"Activity type `{ActivityType(activity.type).name}` may not be enabled for bots")
         else:
-            activity = self._activity if self._activity else []
+            activity = self._activity or []
 
         if status:
             if not isinstance(status, Status):
@@ -1241,13 +1230,11 @@ class Snake(
                     status = Status[status.upper()]
                 except KeyError:
                     raise ValueError(f"`{status}` is not a valid status type. Please use the Status enum") from None
+        elif self._status:
+            status = self._status
         else:
-            # in case the user set status to None
-            if self._status:
-                status = self._status
-            else:
-                log.warning("Status must be set to a valid status type, defaulting to online")
-                status = Status.ONLINE
+            log.warning("Status must be set to a valid status type, defaulting to online")
+            status = Status.ONLINE
 
         self._status = status
         self._activity = activity

@@ -29,11 +29,10 @@ class BaseComponent(DictSerializationMixin):
         data.pop("hash", None)  # TODO Zero clue why discord sometimes include a hash attribute...
 
         component_type = data.pop("type", None)
-        component_class = TYPE_COMPONENT_MAPPING.get(component_type, None)
-        if not component_class:
+        if component_class := TYPE_COMPONENT_MAPPING.get(component_type, None):
+            return component_class.from_dict(data)
+        else:
             raise TypeError(f"Unsupported component type for {data} ({component_type}), please consult the docs.")
-
-        return component_class.from_dict(data)
 
 
 class InteractiveComponent(BaseComponent):
@@ -78,10 +77,8 @@ class Button(InteractiveComponent):
             raise ValueError(f'Button style type of "{value}" not recognized, please consult the docs.')
 
     def __attrs_post_init__(self):
-        if self.style != ButtonStyles.URL:
-            # handle adding a custom id to any button that requires a custom id
-            if self.custom_id is MISSING:
-                self.custom_id = str(uuid.uuid4())
+        if self.style != ButtonStyles.URL and self.custom_id is MISSING:
+            self.custom_id = str(uuid.uuid4())
 
     def _check_object(self):
         if self.style == ButtonStyles.URL:
@@ -89,9 +86,8 @@ class Button(InteractiveComponent):
                 raise TypeError("A link button cannot have a `custom_id`!")
             if not self.url:
                 raise TypeError("A link button must have a `url`!")
-        else:
-            if self.url:
-                raise TypeError("You can't have a URL on a non-link button!")
+        elif self.url:
+            raise TypeError("You can't have a URL on a non-link button!")
 
         if not self.label and not self.emoji:
             raise TypeError("You must have at least a label or emoji on a button.")
@@ -179,7 +175,7 @@ class Select(InteractiveComponent):
     @options.validator
     def _options_validator(self, attribute: str, value: List[Union[SelectOption, Dict]]):
         if not all(isinstance(x, (SelectOption, Dict)) for x in value):
-            raise ValueError(f"Select options must be of type `SelectOption`")
+            raise ValueError("Select options must be of type `SelectOption`")
 
     def _check_object(self):
         if not self.custom_id:

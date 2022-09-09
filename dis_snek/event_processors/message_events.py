@@ -25,11 +25,12 @@ class MessageEvents(EventMixinTemplate):
 
         if not msg.author:
             # sometimes discord will only send an author ID, not the author. this catches that
-            msg.channel = (
-                await self.cache.get_channel(to_snowflake(msg._channel_id)) if not msg.channel else msg.channel
+            msg.channel = msg.channel or await self.cache.get_channel(
+                to_snowflake(msg._channel_id)
             )
+
             if msg._guild_id:
-                msg.guild = await self.cache.get_guild(msg._guild_id) if not msg.guild else msg.guild
+                msg.guild = msg.guild or await self.cache.get_guild(msg._guild_id)
                 msg.author = await self.cache.get_member(msg._guild_id, msg._author_id)
             else:
                 msg.author = await self.cache.get_user(to_snowflake(msg._author_id))

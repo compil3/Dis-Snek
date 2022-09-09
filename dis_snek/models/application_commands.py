@@ -277,7 +277,7 @@ class SlashCommandOption(DictSerializationMixin):
 
     @type.validator
     def _type_validator(self, attribute: str, value: int) -> None:
-        if value == OptionTypes.SUB_COMMAND or value == OptionTypes.SUB_COMMAND_GROUP:
+        if value in [OptionTypes.SUB_COMMAND, OptionTypes.SUB_COMMAND_GROUP]:
             raise ValueError(
                 "Options cannot be SUB_COMMAND or SUB_COMMAND_GROUP. If you want to use subcommands, "
                 "see the @sub_command() decorator."
@@ -297,30 +297,34 @@ class SlashCommandOption(DictSerializationMixin):
     @min_value.validator
     def _min_value_validator(self, attribute: str, value: Optional[float]) -> None:
         if value is not None:
-            if self.type != OptionTypes.INTEGER and self.type != OptionTypes.NUMBER:
+            if self.type not in [OptionTypes.INTEGER, OptionTypes.NUMBER]:
                 raise ValueError("`min_value` can only be supplied with int or float options")
 
-            if self.type == OptionTypes.INTEGER:
-                if isinstance(value, float):
-                    raise ValueError("`min_value` needs to be an int in an int option")
+            if self.type == OptionTypes.INTEGER and isinstance(value, float):
+                raise ValueError("`min_value` needs to be an int in an int option")
 
-            if self.max_value is not None and self.min_value is not None:
-                if self.max_value < self.min_value:
-                    raise ValueError("`min_value` needs to be <= than `max_value`")
+            if (
+                self.max_value is not None
+                and self.min_value is not None
+                and self.max_value < self.min_value
+            ):
+                raise ValueError("`min_value` needs to be <= than `max_value`")
 
     @max_value.validator
     def _max_value_validator(self, attribute: str, value: Optional[float]) -> None:
         if value is not None:
-            if self.type != OptionTypes.INTEGER and self.type != OptionTypes.NUMBER:
+            if self.type not in [OptionTypes.INTEGER, OptionTypes.NUMBER]:
                 raise ValueError("`max_value` can only be supplied with int or float options")
 
-            if self.type == OptionTypes.INTEGER:
-                if isinstance(value, float):
-                    raise ValueError("`max_value` needs to be an int in an int option")
+            if self.type == OptionTypes.INTEGER and isinstance(value, float):
+                raise ValueError("`max_value` needs to be an int in an int option")
 
-            if self.max_value and self.min_value:
-                if self.max_value < self.min_value:
-                    raise ValueError("`min_value` needs to be <= than `max_value`")
+            if (
+                self.max_value
+                and self.min_value
+                and self.max_value < self.min_value
+            ):
+                raise ValueError("`min_value` needs to be <= than `max_value`")
 
 
 @attr.s(slots=True, kw_only=True, on_setattr=[attr.setters.convert, attr.setters.validate])
@@ -393,18 +397,16 @@ class SlashCommand(InteractionCommand):
     @options.validator
     def options_validator(self, attribute: str, value: List) -> None:
         if value:
-            if isinstance(value, list):
-                if len(value) > SLASH_CMD_MAX_OPTIONS:
-                    raise ValueError(f"Slash commands can only hold {SLASH_CMD_MAX_OPTIONS} options")
-                if value != sorted(
-                    value,
-                    key=lambda x: x.required if isinstance(x, SlashCommandOption) else x["required"],
-                    reverse=True,
-                ):
-                    raise ValueError("Required options must go before optional options")
-
-            else:
+            if not isinstance(value, list):
                 raise TypeError("Options attribute must be either None or a list of options")
+            if len(value) > SLASH_CMD_MAX_OPTIONS:
+                raise ValueError(f"Slash commands can only hold {SLASH_CMD_MAX_OPTIONS} options")
+            if value != sorted(
+                value,
+                key=lambda x: x.required if isinstance(x, SlashCommandOption) else x["required"],
+                reverse=True,
+            ):
+                raise ValueError("Required options must go before optional options")
 
     def autocomplete(self, option_name: str):
         """A decorator to declare a coroutine as an option autocomplete"""
@@ -509,12 +511,13 @@ def slash_command(
             sub_cmd_name=sub_cmd_name,
             sub_cmd_description=sub_cmd_description,
             description=description,
-            scopes=scopes if scopes else [GLOBAL_SCOPE],
+            scopes=scopes or [GLOBAL_SCOPE],
             default_permission=default_permission,
             permissions=permissions or {},
             callback=func,
             options=options,
         )
+
 
         return cmd
 
@@ -556,11 +559,12 @@ def context_menu(
         cmd = ContextMenu(
             name=name,
             type=context_type,
-            scopes=scopes if scopes else [GLOBAL_SCOPE],
+            scopes=scopes or [GLOBAL_SCOPE],
             default_permission=default_permission,
             permissions=perm,
             callback=func,
         )
+
         return cmd
 
     return wrapper
@@ -629,11 +633,12 @@ def slash_option(
             description=description,
             required=required,
             autocomplete=autocomplete,
-            choices=choices if choices else [],
+            choices=choices or [],
             channel_types=channel_types,
             min_value=min_value,
             max_value=max_value,
         )
+
         if not hasattr(func, "options"):
             func.options = []
         func.options.insert(0, option)
@@ -681,9 +686,13 @@ def application_commands_to_dict(commands: Dict["Snowflake_Type", Dict[str, Inte
                     "name": subcommand.name,
                     "description": subcommand.description,
                     "options": [],
-                    "permissions": [s.to_dict() if not isinstance(s, dict) else s for s in subcommand.permissions],
+                    "permissions": [
+                        s if isinstance(s, dict) else s.to_dict()
+                        for s in subcommand.permissions
+                    ],
                     "default_permission": subcommand.default_permission,
                 }
+
             if subcommand.group_name:
                 if subcommand.group_name not in groups:
                     groups[subcommand.group_name] = {
@@ -697,7 +706,7 @@ def application_commands_to_dict(commands: Dict["Snowflake_Type", Dict[str, Inte
                 )
             else:
                 sub_cmds.append(subcommand.to_dict() | {"type": int(OptionTypes.SUB_COMMAND)})
-        options = [g for g in groups.values()] + sub_cmds
+        options = list(groups.values()) + sub_cmds
         output_data["options"] = options
         return output_data
 
@@ -712,17 +721,23 @@ def application_commands_to_dict(commands: Dict["Snowflake_Type", Dict[str, Inte
     for cmd_list in cmd_bases.values():
         if any(c.is_subcommand for c in cmd_list):
             # validate all commands share required attributes
-            scopes: list[Snowflake_Type] = list(set(s for c in cmd_list for s in c.scopes))
+            scopes: list[Snowflake_Type] = list({s for c in cmd_list for s in c.scopes})
             permissions: list = [d for c in cmd_list for d in c.permissions]
             base_description = next(
                 (c.description for c in cmd_list if c.description is not None), "No Description Set"
             )
 
-            if not all(c.description in (base_description, "No Description Set") for c in cmd_list):
+            if any(
+                c.description not in (base_description, "No Description Set")
+                for c in cmd_list
+            ):
                 log.warning(
                     f"Conflicting descriptions found in `{cmd_list[0].name}` subcommands; `{base_description}` will be used"
                 )
-            if not all(c.default_permission == cmd_list[0].default_permission for c in cmd_list):
+            if any(
+                c.default_permission != cmd_list[0].default_permission
+                for c in cmd_list
+            ):
                 raise ValueError(f"Conflicting `default_permission` values found in `{cmd_list[0].name}`")
 
             for cmd in cmd_list:
@@ -754,14 +769,13 @@ def _compare_options(local_opt_list: dict, remote_opt_list: dict):
                 if local_option["type"] in (OptionTypes.SUB_COMMAND_GROUP, OptionTypes.SUB_COMMAND):
                     if not _compare_options(local_option["options"], remote_option["options"]):
                         return False
-                else:
-                    if (
+                elif (
                         local_option["name"] != remote_option["name"]
                         or local_option["description"] != remote_option["description"]
                         or local_option["required"] != remote_option.get("required", False)
                         or local_option["autocomplete"] != remote_option.get("autocomplete", False)
                     ):
-                        return False
+                    return False
     return True
 
 

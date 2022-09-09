@@ -172,9 +172,8 @@ class Embed(DictSerializationMixin):
     @fields.validator
     def _fields_validation(self, attribute: str, value: Any) -> None:
         """Validate the fields."""
-        if isinstance(value, list):
-            if len(value) > EMBED_MAX_FIELDS:
-                raise ValueError(f"Embeds can only hold {EMBED_MAX_FIELDS} fields")
+        if isinstance(value, list) and len(value) > EMBED_MAX_FIELDS:
+            raise ValueError(f"Embeds can only hold {EMBED_MAX_FIELDS} fields")
 
     def _check_object(self):
         self._name_validation("title", self.title)
@@ -197,10 +196,7 @@ class Embed(DictSerializationMixin):
         return data
 
     def __len__(self):
-        # yes i know there are far more optimal ways to write this
-        # its written like this for readability
-        total = 0
-        total += len(self.title) if self.title else 0
+        total = 0 + (len(self.title) if self.title else 0)
         total += len(self.description) if self.description else 0
         total += len(self.footer) if self.footer else 0
         total += len(self.author) if self.author else 0

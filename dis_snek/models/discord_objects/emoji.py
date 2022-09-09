@@ -38,19 +38,14 @@ class Emoji(SnowflakeObject, DictSerializationMixin):
         return f"<{'a:' if self.animated else ''}{self.name}:{self.id}>"  # <:thinksmart:623335224318754826>
 
     def __eq__(self, other):
-        if self.id:
-            return self.id == other.id
-        return self.name == other.name
+        return self.id == other.id if self.id else self.name == other.name
 
     @property
     def req_format(self) -> str:
         """
         Format used for web request.
         """
-        if self.id:
-            return f"{self.name}:{self.id}"
-        else:
-            return self.name
+        return f"{self.name}:{self.id}" if self.id else self.name
 
 
 @define()
@@ -90,10 +85,7 @@ class CustomEmoji(Emoji):
         """
         Determines if this emoji is usable by the current user.
         """
-        if not self.available:
-            return False
-        # todo: check roles
-        return True
+        return bool(self.available)
 
     async def get_creator(self) -> "User":
         """

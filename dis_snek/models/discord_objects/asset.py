@@ -35,9 +35,7 @@ class Asset:
     @property
     def animated(self) -> bool:
         """True if this asset is animated"""
-        if not self.hash:
-            return None
-        return self.hash.startswith("a_")
+        return self.hash.startswith("a_") if self.hash else None
 
     async def get(self, extension: Optional[str] = None, size: Optional[int] = None) -> bytes:
         """
@@ -59,7 +57,7 @@ class Asset:
         url = self.url
 
         if size:
-            if not ((size != 0) and (size & (size - 1) == 0)):  # if not power of 2
+            if size == 0 or size & (size - 1) != 0:  # if not power of 2
                 raise ValueError("Size should be a power of 2")
             if not 16 <= size <= 4096:
                 raise ValueError("Size should be between 16 and 4096")

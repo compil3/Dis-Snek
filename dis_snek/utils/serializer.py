@@ -22,7 +22,7 @@ def to_dict(inst):
         return converter()
 
     attrs = fields(inst.__class__)
-    d = dict()
+    d = {}
 
     for a in attrs:
         if a.metadata.get("no_export", False):
@@ -89,7 +89,7 @@ def _get_file_mimetype(filedata: bytes):
         return "image/png"
     elif filedata.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
-    elif filedata[0:4] == b"RIFF" and filedata[8:12] == b"WEBP":
+    elif filedata[:4] == b"RIFF" and filedata[8:12] == b"WEBP":
         return "image/webp"
     else:
         return "application/octet-stream"

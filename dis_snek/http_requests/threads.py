@@ -164,7 +164,6 @@ class ThreadRequests:
             return await self.request(
                 Route("POST", f"/channels/{channel_id}/messages/{message_id}/threads"), data=payload, reason=reason
             )
-        else:
-            payload["type"] = thread_type
-            payload["invitable"] = invitable
-            return await self.request(Route("POST", f"/channels/{channel_id}/threads"), data=payload, reason=reason)
+        payload["type"] = thread_type
+        payload["invitable"] = invitable
+        return await self.request(Route("POST", f"/channels/{channel_id}/threads"), data=payload, reason=reason)

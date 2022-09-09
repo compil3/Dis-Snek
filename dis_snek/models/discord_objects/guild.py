@@ -263,19 +263,13 @@ class Guild(BaseGuild):
     @property
     def premium_subscriber_role(self) -> Optional["Role"]:
         """The role given to boosters of this server, if set"""
-        for role in self.roles:
-            if role.premium_subscriber:
-                return role
-        return None
+        return next((role for role in self.roles if role.premium_subscriber), None)
 
     @property
     def my_role(self) -> Optional["Role"]:
         """The role associated with this client, if set"""
         m_r_id = self._client.user.id
-        for role in self.roles:
-            if role._bot_id == m_r_id:
-                return role
-        return None
+        return next((role for role in self.roles if role._bot_id == m_r_id), None)
 
     async def get_owner(self) -> "Member":
         # maybe precache owner instead of using `get_owner`
@@ -765,28 +759,27 @@ class Guild(BaseGuild):
         payload = {}
 
         if name:
-            payload.update({"name": name})
+            payload["name"] = name
 
         if permissions:
-            payload.update({"permissions": str(int(permissions))})
+            payload["permissions"] = str(int(permissions))
 
-        colour = colour or color
-        if colour:
-            payload.update({"color": colour.value})
+        if colour := colour or color:
+            payload["color"] = colour.value
 
         if hoist:
-            payload.update({"hoist": True})
+            payload["hoist"] = True
 
         if mentionable:
-            payload.update({"mentionable": True})
+            payload["mentionable"] = True
 
         if icon:
             # test if the icon is probably a unicode emoji (str and len() == 1) or a path / bytes obj
             if isinstance(icon, str) and len(icon) == 1:
-                payload.update({"unicode_emoji": icon})
+                payload["unicode_emoji"] = icon
 
             else:
-                payload.update({"icon": to_image_data(icon)})
+                payload["icon"] = to_image_data(icon)
 
         result = await self._client.http.create_guild_role(guild_id=self.id, payload=payload, reason=reason)
         return self._client.cache.place_role_data(guild_id=self.id, data=[result])[to_snowflake(result["id"])]
@@ -981,9 +974,8 @@ class Guild(BaseGuild):
             enabled: Should the widget be enabled?
             channel: The channel to use in the widget
         """
-        if channel:
-            if isinstance(channel, DiscordObject):
-                channel = channel.id
+        if channel and isinstance(channel, DiscordObject):
+            channel = channel.id
         return await self._client.http.modify_guild_widget(self.id, enabled, channel)
 
     async def get_invites(self) -> List["Invite"]:

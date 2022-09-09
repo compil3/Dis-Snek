@@ -29,9 +29,7 @@ class Timestamp(datetime):
     def fromdatetime(cls, dt: datetime) -> "Timestamp":
         timestamp = cls.fromtimestamp(dt.timestamp(), tz=dt.tzinfo)
 
-        if timestamp.tzinfo is None:  # assume naive datetimes are based on local timezone
-            return timestamp.astimezone()
-        return timestamp
+        return timestamp.astimezone() if timestamp.tzinfo is None else timestamp
 
     @classmethod
     def utcfromtimestamp(cls, t: float) -> "Timestamp":
@@ -42,9 +40,7 @@ class Timestamp(datetime):
     def fromisoformat(cls, date_string: str) -> "Timestamp":
         timestamp = super().fromisoformat(date_string)
 
-        if timestamp.tzinfo is None:  # assume naive datetimes are based on local timezone
-            return timestamp.astimezone()
-        return timestamp
+        return timestamp.astimezone() if timestamp.tzinfo is None else timestamp
 
     @classmethod
     def fromisocalendar(cls, year: int, week: int, day: int) -> "Timestamp":
@@ -54,9 +50,7 @@ class Timestamp(datetime):
     def fromtimestamp(cls, t: float, tz=None) -> "Timestamp":
         timestamp = super().fromtimestamp(t, tz=tz)
 
-        if timestamp.tzinfo is None:  # assume naive datetimes are based on local timezone
-            return timestamp.astimezone()
-        return timestamp
+        return timestamp.astimezone() if timestamp.tzinfo is None else timestamp
 
     @classmethod
     def fromordinal(cls, n: int) -> "Timestamp":
@@ -83,10 +77,11 @@ class Timestamp(datetime):
         return cls.utcfromtimestamp(timestamp)
 
     def format(self, style: Optional[Union[TimestampStyles, str]] = None) -> str:
-        if not style:
-            return f"<t:{self.timestamp():.0f}>"
-        else:
-            return f"<t:{self.timestamp():.0f}:{style}>"
+        return (
+            f"<t:{self.timestamp():.0f}:{style}>"
+            if style
+            else f"<t:{self.timestamp():.0f}>"
+        )
 
     def __str__(self):
         return self.format()
